@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    // "target": "es6",
+    // "module": "ESNext",
+    // "moduleResolution": "node",
+    "jsx": "react-jsx", // react- React.createElement(react 16) react-jsx-_jsx(react 17)
+    "strict": true, // 更严格的类型检查，default:false
+    "esModuleInterop": true,
+    "noUnusedLocals": false,
+    // "noUnusedParameters": true,
+    // "noImplicitReturns": true,
+    // "noImplicitAny": false,
+    // "noFallthroughCasesInSwitch": true,
+    // "suppressImplicitAnyIndexErrors":true,
+    // "allowSyntheticDefaultImports": true,
+    // "outDir": "lib",
+    // "lib": [
+    //   "es2018",
+    //   "dom"
+    // ],
+    // "importHelpers": true
+    "baseUrl": "src",
+    "paths": {},
+    // "types": ["vite/client"]
+  },
+  "includes": [],
+  "exclude": [
+    "node_modules",
+  ]
+}
