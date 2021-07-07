@@ -9,6 +9,9 @@
     "preview": "lerna --scope=site run start"
   },
   "devDependencies": {
-    "lerna": "^4.0.0"
+    "eslint": "^7.30.0",
+    "husky": "^7.0.1",
+    "lerna": "^4.0.0",
+    "prettier": "^2.3.2"
   }
 }
