@@ -6,12 +6,22 @@
   ],
   "scripts": {
     "bootstrap": "lerna bootstrap",
-    "preview": "lerna --scope=site run start"
+    "preview": "lerna --scope=site run start",
+    "prepare": "husky install"
   },
   "devDependencies": {
+    "@commitlint/cli": "^12.1.4",
+    "@commitlint/config-conventional": "^12.1.4",
+    "@commitlint/config-lerna-scopes": "^12.1.4",
+    "cz-conventional-changelog": "3.3.0",
     "eslint": "^7.30.0",
     "husky": "^7.0.1",
     "lerna": "^4.0.0",
     "prettier": "^2.3.2"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
   }
 }
