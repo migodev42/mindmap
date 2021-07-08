@@ -24,7 +24,7 @@ export default [
   // CommonJS
   {
     input: 'src/index.tsx',
-    output: { dir: 'lib', format: 'cjs', indent: false },
+    output: { dir: 'dist/lib', format: 'cjs', indent: false },
     external: makeExternalPredicate([
       ...Object.keys(pkg.dependencies || {}),
       ...Object.keys(pkg.peerDependencies || {}),
@@ -37,7 +37,7 @@ export default [
         declaration: true, // 配置输出.d.ts
         declarationMap: true, // 输出从.d.ts映射回.ts的map，让vscode等ide可以做变量声明跳转
         emitDeclarationOnly: true, // 只输出.d.ts，不生成编译后的js结果
-        outDir: 'lib',
+        outDir: 'dist/lib',
         target: 'esnext', // ecmascript版本:最新
         module: 'commonjs',
         jsx: 'react-jsx',
@@ -52,7 +52,7 @@ export default [
   // ES
   {
     input: 'src/index.tsx',
-    output: { dir: 'es', format: 'es', indent: false },
+    output: { dir: 'dist/es', format: 'es', indent: false },
     external: makeExternalPredicate([
       ...Object.keys(pkg.dependencies || {}),
       ...Object.keys(pkg.peerDependencies || {}),
