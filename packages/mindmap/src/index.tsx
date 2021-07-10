@@ -21,26 +21,35 @@ export function uuid() {
 const findNodeById = (tree, id) => {
   let rs = null;
 
-  const traverse = node => {
-    if (id === node.id || !node) {
-      rs = node;
+  const traverse = (node, parent) => {
+    if (!node || id === node.id) {
+      rs = {
+        parent,
+        node,
+      };
       return;
     }
 
     if (node.children) {
       for (let i = 0; i < node.children.length; ++i) {
-        traverse(node.children[i]);
+        traverse(node.children[i], node);
       }
     }
   };
-  traverse(tree);
-  if (!rs) throw new Error('node not found');
+  traverse(tree, null);
+  if (!rs) throw new Error('node not found', rs, id, tree);
   return rs;
 };
 
-const useEditNode = ({ treectx }) => {
-  const { tree, treeDispatch } = treectx;
+// 指针和引用的区别
+// a = {aa:{bb:1}}
+// c = a.aa.bb
+// c =undefined
+// a.aa.bb  // 1
 
+const useEditNode = ({ treectx, focusctx }) => {
+  const { tree, treeDispatch } = treectx;
+  const { focusDispatch } = focusctx;
   const addChild = id => {
     if (!id) {
       console.log('addChild should have an id');
@@ -48,29 +57,43 @@ const useEditNode = ({ treectx }) => {
     }
 
     const nextData = { ...tree };
-    const target = findNodeById(nextData, id);
+    const { node: target } = findNodeById(nextData, id);
     // console.log('target', data.id, target);
 
-    target.children = [
-      ...target?.children,
-      {
-        id: uuid(),
-        text: '子结点' + uuid(),
-        showChildren: true,
-        children: [],
-      },
-    ];
+    const newNode = {
+      id: uuid(),
+      text: '子结点' + uuid(),
+      showChildren: true,
+      children: [],
+    };
+    target.children = [...target?.children, newNode];
     console.log('dispatched treeDispatch');
     treeDispatch({ type: 'set', payload: nextData });
+    focusDispatch({ type: 'focus', payload: newNode });
+  };
+
+  const deleteNode = id => {
+    if (!id) {
+      console.log('deleteNode should have an id');
+      return;
+    }
+    const nextTree = { ...tree };
+    const { parent, node: target } = findNodeById(nextTree, id);
+    if (parent && parent.children) {
+      parent.children = parent.children.filter(el => el.id !== target.id);
+    }
+    treeDispatch({ type: 'set', payload: nextTree });
+    focusDispatch({ type: 'blur' });
   };
 
   return {
     addChild,
+    deleteNode,
   };
 };
 
 const RecursiveNode = ({ node }) => {
-  const { focusDispatch } = useContext(FocusContext);
+  const { focus, focusDispatch } = useContext(FocusContext);
 
   const onFocus = () => {
     focusDispatch({ type: 'focus', payload: node });
@@ -79,7 +102,11 @@ const RecursiveNode = ({ node }) => {
     <div style={{ display: 'flex', alignItems: 'center' }}>
       {/* 根节点 */}
       <div
-        style={{ border: '1px solid grey', marginTop: 12 }}
+        style={{
+          border: '1px solid grey',
+          marginTop: 12,
+          outline: focus && focus.id === node.id ? '1px solid yellow' : undefined,
+        }}
         onClick={onFocus}
       >
         {node?.text}
@@ -175,6 +202,8 @@ const MindMap = () => {
     switch (action.type) {
       case 'focus':
         return action.payload;
+      case 'blur':
+        return null;
       default: {
         return prev;
       }
@@ -196,7 +225,7 @@ const MindMap = () => {
     [focus]
   );
 
-  const { addChild } = useEditNode({ treectx });
+  const { addChild, deleteNode } = useEditNode({ treectx, focusctx });
   const focusRef = useRef(focus);
   focusRef.current = focus;
 
@@ -204,10 +233,17 @@ const MindMap = () => {
   useEffect(() => {
     const onKeyDown = e => {
       console.log('onKeyDown', e);
-      if (e.key !== 'Tab') return;
-      e.stopPropagation();
-      e.preventDefault();
-      addChild(focusRef.current?.id);
+      switch (e.key) {
+        case 'Tab':
+          e.stopPropagation();
+          e.preventDefault();
+          addChild(focusRef.current?.id);
+          break;
+        case 'Delete':
+          deleteNode(focusRef.current?.id);
+          break;
+        default:
+      }
     };
     mindmapref.current.addEventListener('keydown', onKeyDown);
     return () => {
