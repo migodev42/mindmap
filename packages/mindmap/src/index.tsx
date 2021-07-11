@@ -6,6 +6,7 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
 } from 'react';
 export const DataContext = createContext({});
 export const FocusContext = createContext({});
@@ -94,20 +95,23 @@ const useEditNode = ({ treectx, focusctx }) => {
 
 const RecursiveNode = ({ node }) => {
   const { focus, focusDispatch } = useContext(FocusContext);
-
-  const onFocus = () => {
+  const [editable, setEditable] = useState(true);
+  const onFocus = e => {
+    e.stopPropagation();
     focusDispatch({ type: 'focus', payload: node });
   };
   return (
-    <div style={{ display: 'flex', alignItems: 'center' }}>
+    <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0  }}>
       {/* 根节点 */}
       <div
         style={{
           border: '1px solid grey',
           marginTop: 12,
-          outline: focus && focus.id === node.id ? '1px solid yellow' : undefined,
+          outline:
+            focus && focus.id === node.id ? '1px solid yellow' : undefined,
         }}
         onClick={onFocus}
+        contenteditable={editable}
       >
         {node?.text}
       </div>
@@ -251,6 +255,9 @@ const MindMap = () => {
     };
   }, []);
 
+  const blur = () => {
+    focusDispatch({ type: 'blur' });
+  };
   return (
     <div
       tabIndex={0}
@@ -262,7 +269,9 @@ const MindMap = () => {
         justifyContent: 'center',
         margin: 12,
         padding: 12,
+        overflow:'auto'
       }}
+      onClick={blur}
     >
       <DataContext.Provider value={treectx}>
         <FocusContext.Provider value={focusctx}>
