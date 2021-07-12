@@ -101,12 +101,21 @@ const RecursiveNode = ({ node }) => {
     focusDispatch({ type: 'focus', payload: node });
   };
   return (
-    <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0  }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        flexShrink: 0,
+        minWidth: 100,
+      }}
+    >
       {/* 根节点 */}
       <div
         style={{
           border: '1px solid grey',
+          flexShrink: 0,
           marginTop: 12,
+          marginRight: 6,
           outline:
             focus && focus.id === node.id ? '1px solid yellow' : undefined,
         }}
@@ -116,7 +125,7 @@ const RecursiveNode = ({ node }) => {
         {node?.text}
       </div>
       {/* 子节点 */}
-      <div style={{ marginLeft: 12 }}>
+      <div style={{ marginLeft: 6 }}>
         {node.children &&
           node.children.map(el => (
             <RecursiveNode node={el} key={el.id}></RecursiveNode>
@@ -259,30 +268,32 @@ const MindMap = () => {
     focusDispatch({ type: 'blur' });
   };
   return (
-    <div
-      tabIndex={0}
-      ref={mindmapref}
-      style={{
-        outline: '1px solid grey',
-        width: '100%',
-        display: 'flex',
-        justifyContent: 'center',
-        margin: 12,
-        padding: 12,
-        overflow:'auto'
-      }}
-      onClick={blur}
-    >
-      <DataContext.Provider value={treectx}>
-        <FocusContext.Provider value={focusctx}>
-          <RecursiveNode node={tree}></RecursiveNode>
-        </FocusContext.Provider>
-
-        <div style={{ position: 'absolute', bottom: 50 }}>
-          当前选中：<SingleLayerNode node={focus}></SingleLayerNode>
-        </div>
-      </DataContext.Provider>
-    </div>
+    <>
+      <div
+        tabIndex={0}
+        ref={mindmapref}
+        style={{
+          outline: '1px solid grey',
+          width: '100%',
+          // display: 'flex',
+          // justifyContent: 'safe center',
+          // position: 'relative',
+          margin: 12,
+          padding: 12,
+          overflow: 'auto',
+        }}
+        onClick={blur}
+      >
+        <DataContext.Provider value={treectx}>
+          <FocusContext.Provider value={focusctx}>
+            <RecursiveNode node={tree}></RecursiveNode>
+          </FocusContext.Provider>
+        </DataContext.Provider>
+      </div>
+      <div style={{ position: 'absolute', bottom: 50 }}>
+        当前选中：<SingleLayerNode node={focus}></SingleLayerNode>
+      </div>
+    </>
   );
 };
 export default MindMap;
