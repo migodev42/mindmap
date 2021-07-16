@@ -95,11 +95,14 @@ const useEditNode = ({ treectx, focusctx }) => {
 
 const RecursiveNode = ({ node }) => {
   const { focus, focusDispatch } = useContext(FocusContext);
-  const [editable, setEditable] = useState(true);
+  const [editable, setEditable] = useState(false);
   const onFocus = e => {
     e.stopPropagation();
     focusDispatch({ type: 'focus', payload: node });
   };
+  useEffect(() => {
+    if (!focus) setEditable(false);
+  }, [focus]);
   return (
     <div
       style={{
@@ -116,13 +119,16 @@ const RecursiveNode = ({ node }) => {
           flexShrink: 0,
           marginTop: 12,
           marginRight: 6,
+          lineHeight: 1.2,
           outline:
             focus && focus.id === node.id ? '1px solid yellow' : undefined,
         }}
+        onDoubleClick={() => setEditable(true)}
         onClick={onFocus}
-        contenteditable={editable}
+        contentEditable={editable}
       >
-        {node?.text}
+        {!editable && node?.text}
+        {editable && <input type="text" value={node?.text} />}
       </div>
       {/* 子节点 */}
       <div style={{ marginLeft: 6 }}>
