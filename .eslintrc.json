@@ -11,9 +11,18 @@
     "ecmaVersion": 11,
     "allowImportExportEverywhere": true
   },
+  "plugins": [
+    // ...
+    "react-hooks"
+  ],
   "rules": {
     "no-console": "off",
-    "strict": ["error", "global"],
-    "curly": "warn"
+    "strict": [
+      "error",
+      "global"
+    ],
+    "curly": "warn",
+    "react-hooks/rules-of-hooks": "error", // Checks rules of Hooks
+    "react-hooks/exhaustive-deps": "warn" // Checks effect dependencies
   }
 }

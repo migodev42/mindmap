@@ -38,7 +38,10 @@ const findNodeById = (tree, id) => {
     }
   };
   traverse(tree, null);
-  if (!rs) throw new Error('node not found', rs, id, tree);
+  if (!rs) {
+    console.error(rs, id, tree);
+    throw new Error('node not found');
+  }
   return rs;
 };
 
@@ -49,8 +52,8 @@ const findNodeById = (tree, id) => {
 // a.aa.bb  // 1
 
 const useEditNode = ({ treectx, focusctx }) => {
+  const { focus, focusDispatch } = focusctx;
   const { tree, treeDispatch } = treectx;
-  const { focusDispatch } = focusctx;
   const addChild = id => {
     if (!id) {
       console.log('addChild should have an id');
@@ -87,22 +90,53 @@ const useEditNode = ({ treectx, focusctx }) => {
     focusDispatch({ type: 'blur' });
   };
 
+  const editNode = (id, node) => {
+    if (!id) {
+      console.log('editNode should have an id');
+      return;
+    }
+    const nextTree = { ...tree };
+    const { parent, node: target } = findNodeById(nextTree, id);
+    // if (parent && parent.children) {
+    Object.keys(node).map(key => {
+      target[key] = node[key];
+    });
+    // parent.children = parent.children.filter(el => el.id !== target.id);
+    // }
+    treeDispatch({ type: 'set', payload: nextTree });
+  };
+
   return {
     addChild,
     deleteNode,
+    editNode,
   };
 };
 
 const RecursiveNode = ({ node }) => {
-  const { focus, focusDispatch } = useContext(FocusContext);
+  const focusctx = useContext(FocusContext);
+  const { focus, focusDispatch } = focusctx;
+  const treectx = useContext(DataContext);
+
   const [editable, setEditable] = useState(false);
+  const { editNode } = useEditNode({
+    treectx,
+    focusctx,
+  });
   const onFocus = e => {
     e.stopPropagation();
     focusDispatch({ type: 'focus', payload: node });
   };
+
+  const [value, setValue] = useState(node?.text);
+
   useEffect(() => {
-    if (!focus) setEditable(false);
+    if (!focus) {
+      setEditable(false);
+      editNode(node.id, { ...node, text: value });
+    }
   }, [focus]);
+
   return (
     <div
       style={{
@@ -121,14 +155,34 @@ const RecursiveNode = ({ node }) => {
           marginRight: 6,
           lineHeight: 1.2,
           outline:
-            focus && focus.id === node.id ? '1px solid yellow' : undefined,
+            focus && focus.id === node.id
+              ? editable
+                ? '1px solid navy'
+                : '1px solid yellow'
+              : undefined,
         }}
         onDoubleClick={() => setEditable(true)}
         onClick={onFocus}
+        // https://stackoverflow.com/questions/49639144/why-does-react-warn-against-an-contenteditable-component-having-children-managed
         contentEditable={editable}
+        suppressContentEditableWarning={true}
+        onInput={e => {
+          console.log('onInput', e.target.innerText);
+          setValue(e.target.innerText);
+        }}
       >
-        {!editable && node?.text}
-        {editable && <input type="text" value={node?.text} />}
+        {node?.text}
+        {/* {!editable && node?.text} */}
+        {/* {editable && (
+          <input
+            type="text"
+            value={value}
+            onChange={e => {
+              setValue(e.target.value);
+              editNode(node.id, { ...node, text: e.target.value });
+            }}
+          />
+        )} */}
       </div>
       {/* 子节点 */}
       <div style={{ marginLeft: 6 }}>
@@ -145,7 +199,8 @@ const RecursiveNode = ({ node }) => {
 const SingleLayerNode = ({ node }) => {
   return (
     <>
-      {node?.text} {node?.id}
+      text: {node?.text} {'  '}
+      id: {node?.id}
     </>
   );
 };
@@ -244,7 +299,10 @@ const MindMap = () => {
     [focus]
   );
 
-  const { addChild, deleteNode } = useEditNode({ treectx, focusctx });
+  const { addChild, deleteNode } = useEditNode({
+    treectx,
+    focusctx,
+  });
   const focusRef = useRef(focus);
   focusRef.current = focus;
 
