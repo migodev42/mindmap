@@ -10,6 +10,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { usePersistFn } from './hooks';
+
 export const DataContext = createContext({});
 export const FocusContext = createContext({});
 export const SVGContext = createContext(null);
@@ -59,7 +61,7 @@ const useEditNode = ({ treectx, focusctx }) => {
   const { focus, focusDispatch } = focusctx;
   const { tree, treeDispatch } = treectx;
 
-  const addChild = useCallback(
+  const addChild = usePersistFn(
     id => {
       if (!id) {
         console.log('addChild should have an id');
@@ -74,14 +76,13 @@ const useEditNode = ({ treectx, focusctx }) => {
         showChildren: true,
         children: [],
       };
-      target.children.push(newNode)
+      target.children.push(newNode);
       treeDispatch({ type: 'set', payload: nextData, source: 'child' });
       focusDispatch({ type: 'focus', payload: newNode });
     },
-    [focusDispatch, tree, treeDispatch]
   );
 
-  const addSibling = id => {
+  const addSibling = usePersistFn(id => {
     if (!id) {
       console.log('addSibling should have an id');
       return;
@@ -101,8 +102,9 @@ const useEditNode = ({ treectx, focusctx }) => {
     parent.children.splice(idx + 1, 0, newNode);
     treeDispatch({ type: 'set', payload: nextData, source: 'sib' });
     focusDispatch({ type: 'focus', payload: newNode });
-  };
-  const deleteNode = id => {
+  });
+
+  const deleteNode = usePersistFn(id => {
     if (!id) {
       console.log('deleteNode should have an id');
       return;
@@ -114,23 +116,20 @@ const useEditNode = ({ treectx, focusctx }) => {
     }
     treeDispatch({ type: 'set', payload: nextTree, source: 'del' });
     focusDispatch({ type: 'blur' });
-  };
+  });
 
-  const editNode = (id, node) => {
+  const editNode = usePersistFn((id, node) => {
     if (!id) {
       console.log('editNode should have an id');
       return;
     }
     const nextTree = { ...tree };
     const { parent, node: target } = findNodeById(nextTree, id);
-    // if (parent && parent.children) {
     Object.keys(node).map(key => {
       target[key] = node[key];
     });
-    // parent.children = parent.children.filter(el => el.id !== target.id);
-    // }
     treeDispatch({ type: 'set', payload: nextTree, source: 'edit' });
-  };
+  });
 
   return {
     addChild,
@@ -148,10 +147,11 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
   const svgctx = useContext(SVGContext);
 
   const [editable, setEditable] = useState(false);
-  // const { editNode } = useEditNode({
-  //   treectx,
-  //   focusctx,
-  // });
+  const { editNode } = useEditNode({
+    treectx,
+    focusctx,
+  });
+
   const onFocus = e => {
     e.stopPropagation();
     focusDispatch({ type: 'focus', payload: node });
@@ -159,45 +159,45 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
 
   const [value, setValue] = useState(node?.text);
 
-  // useEffect(() => {
-  //   if (!focus) {
-  //     setEditable(false);
-  //     editNode(node.id, { ...node, text: value });
-  //   }
-  // }, [focus]);
+  useEffect(() => {
+    if (!focus) {
+      setEditable(false);
+      // editNode(node.id, { ...node, text: value });
+    }
+  }, [focus]);
 
   const rootRef = useRef();
   const childrenRef = useRef([]);
 
   useEffect(() => {
-    // console.log(
-    //   'left top:',
-    //   rootRef.current.offsetLeft,
-    //   rootRef.current.offsetTop,
-    //   rootRef.current.getBoundingClientRect(),
-    //   node?.text
-    // );
-    // const x =
-    //   rootRef.current.offsetLeft +
-    //   rootRef.current.getBoundingClientRect().width;
-    // const y =
-    //   (rootRef.current.getBoundingClientRect().top +
-    //     rootRef.current.getBoundingClientRect().bottom) /
-    //     2 -
-    //   12; // 减去marginTop: 12
+    console.log(
+      'left top:',
+      rootRef.current.offsetLeft,
+      rootRef.current.offsetTop,
+      rootRef.current.getBoundingClientRect(),
+      node?.text
+    );
+    const x =
+      rootRef.current.offsetLeft +
+      rootRef.current.getBoundingClientRect().width;
+    const y =
+      (rootRef.current.getBoundingClientRect().top +
+        rootRef.current.getBoundingClientRect().bottom) /
+        2 -
+      12; // 减去marginTop: 12
     // console.log('root mid x', x);
     // console.log('root mid y', y); // 减去marginTop: 12
-    // if (node.children && node.children.length) {
-    //   console.log('childrenRef.current[0]', childrenRef.current);
-    //   childrenRef.current.map(el => {
-    //     const childy =
-    //       (el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) /
-    //         2 -
-    //       12; // 减去marginTop: 12
-    //     svgctx.current.push(`M${x} ${y} H ${x + 10} V ${childy} H ${x + 20}`);
-    //   });
-    // }
-  }, []);
+    if (node.children && node.children.length) {
+      console.log('childrenRef.current[0]', childrenRef.current);
+      childrenRef.current.map(el => {
+        const childy =
+          (el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) /
+            2 -
+          12; // 减去marginTop: 12
+        svgctx.current.push(`M${x} ${y} H ${x + 10} V ${childy} H ${x + 20}`);
+      });
+    }
+  }, [node.children, node?.text, svgctx]);
 
   return (
     <div
@@ -405,7 +405,7 @@ const MindMap = () => {
         ref={mindmapref}
         style={{
           outline: '1px solid grey',
-          width: '100%',          
+          width: '100%',
           position: 'relative',
           margin: 12,
           padding: 12,
@@ -416,7 +416,6 @@ const MindMap = () => {
         <DataContext.Provider value={treectx}>
           <FocusContext.Provider value={focusctx}>
             <SVGContext.Provider value={svgRef}>
-
               <RecursiveNode node={tree}></RecursiveNode>
 
               {/* 连线 */}
@@ -440,7 +439,7 @@ const MindMap = () => {
                   fill="transparent"
                   stroke="navy"
                   style={{ shapeRendering: 'crispEdges' }}
-                  strokeWidth={2}
+                  strokeWidth={1}
                 >
                   {svgRef.current.map(d => {
                     return <path d={d} key={d}></path>;
