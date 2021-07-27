@@ -2,6 +2,7 @@ import React, {
   createContext,
   memo,
   MutableRefObject,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -25,10 +26,10 @@ const findNodeById = (tree, id) => {
   let rs = null;
 
   const traverse = (node, parent, idx) => {
-    if (!node || id === node.id) {
+    if (id === node.id) {
       rs = {
-        parent,
         node,
+        parent,
         idx,
       };
       return;
@@ -57,27 +58,28 @@ const findNodeById = (tree, id) => {
 const useEditNode = ({ treectx, focusctx }) => {
   const { focus, focusDispatch } = focusctx;
   const { tree, treeDispatch } = treectx;
-  const addChild = id => {
-    if (!id) {
-      console.log('addChild should have an id');
-      return;
-    }
 
-    const nextData = { ...tree };
-    const { node: target } = findNodeById(nextData, id);
-    // console.log('target', data.id, target);
+  const addChild = useCallback(
+    id => {
+      if (!id) {
+        console.log('addChild should have an id');
+        return;
+      }
+      const nextData = { ...tree };
+      const { node: target } = findNodeById(nextData, id);
 
-    const newNode = {
-      id: uuid(),
-      text: '子结点' + uuid(),
-      showChildren: true,
-      children: [],
-    };
-    target.children = [...target?.children, newNode];
-    console.log('dispatched treeDispatch', target);
-    treeDispatch({ type: 'set', payload: nextData });
-    focusDispatch({ type: 'focus', payload: newNode });
-  };
+      const newNode = {
+        id: uuid(),
+        text: '子结点' + uuid(),
+        showChildren: true,
+        children: [],
+      };
+      target.children.push(newNode)
+      treeDispatch({ type: 'set', payload: nextData, source: 'child' });
+      focusDispatch({ type: 'focus', payload: newNode });
+    },
+    [focusDispatch, tree, treeDispatch]
+  );
 
   const addSibling = id => {
     if (!id) {
@@ -86,7 +88,7 @@ const useEditNode = ({ treectx, focusctx }) => {
     }
     const nextData = { ...tree };
     const { parent, node: target, idx } = findNodeById(nextData, id);
-    if (!idx) {
+    if (idx === undefined) {
       console.log('addSibling can`t perform on root');
       return;
     }
@@ -97,7 +99,7 @@ const useEditNode = ({ treectx, focusctx }) => {
       children: [],
     };
     parent.children.splice(idx + 1, 0, newNode);
-    treeDispatch({ type: 'set', payload: nextData });
+    treeDispatch({ type: 'set', payload: nextData, source: 'sib' });
     focusDispatch({ type: 'focus', payload: newNode });
   };
   const deleteNode = id => {
@@ -110,7 +112,7 @@ const useEditNode = ({ treectx, focusctx }) => {
     if (parent && parent.children) {
       parent.children = parent.children.filter(el => el.id !== target.id);
     }
-    treeDispatch({ type: 'set', payload: nextTree });
+    treeDispatch({ type: 'set', payload: nextTree, source: 'del' });
     focusDispatch({ type: 'blur' });
   };
 
@@ -127,7 +129,7 @@ const useEditNode = ({ treectx, focusctx }) => {
     });
     // parent.children = parent.children.filter(el => el.id !== target.id);
     // }
-    treeDispatch({ type: 'set', payload: nextTree });
+    treeDispatch({ type: 'set', payload: nextTree, source: 'edit' });
   };
 
   return {
@@ -138,6 +140,7 @@ const useEditNode = ({ treectx, focusctx }) => {
   };
 };
 
+// eslint-disable-next-line react/display-name
 const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
   const focusctx = useContext(FocusContext);
   const { focus, focusDispatch } = focusctx;
@@ -145,10 +148,10 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
   const svgctx = useContext(SVGContext);
 
   const [editable, setEditable] = useState(false);
-  const { editNode } = useEditNode({
-    treectx,
-    focusctx,
-  });
+  // const { editNode } = useEditNode({
+  //   treectx,
+  //   focusctx,
+  // });
   const onFocus = e => {
     e.stopPropagation();
     focusDispatch({ type: 'focus', payload: node });
@@ -156,12 +159,12 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
 
   const [value, setValue] = useState(node?.text);
 
-  useEffect(() => {
-    if (!focus) {
-      setEditable(false);
-      editNode(node.id, { ...node, text: value });
-    }
-  }, [focus]);
+  // useEffect(() => {
+  //   if (!focus) {
+  //     setEditable(false);
+  //     editNode(node.id, { ...node, text: value });
+  //   }
+  // }, [focus]);
 
   const rootRef = useRef();
   const childrenRef = useRef([]);
@@ -182,10 +185,8 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
     //     rootRef.current.getBoundingClientRect().bottom) /
     //     2 -
     //   12; // 减去marginTop: 12
-
     // console.log('root mid x', x);
     // console.log('root mid y', y); // 减去marginTop: 12
-
     // if (node.children && node.children.length) {
     //   console.log('childrenRef.current[0]', childrenRef.current);
     //   childrenRef.current.map(el => {
@@ -232,7 +233,6 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
           setValue(e.target.innerText);
         }}
         onKeyDown={e => {
-          console.log('node onkeyDown,editable', editable);
           editable && e.stopPropagation();
         }}
         ref={ref}
@@ -274,12 +274,12 @@ type focusAction =
 const MindMap = () => {
   const svgRef = useRef([]);
   const [tree, treeDispatch] = useReducer(
-    (tree, action) => {
+    (prev, action) => {
       switch (action.type) {
         case 'set':
           return { ...action.payload };
         default:
-          return tree;
+          return prev;
       }
     },
     {
@@ -336,9 +336,6 @@ const MindMap = () => {
     }
   );
 
-  useEffect(()=>{
-    console.log('tree',tree)
-  },[tree])
   const [focus, focusDispatch] = useReducer((prev, action: focusAction) => {
     switch (action.type) {
       case 'focus':
@@ -349,7 +346,7 @@ const MindMap = () => {
         return prev;
       }
     }
-  }, null);  
+  }, null);
   const treectx = useMemo(
     () => ({
       tree,
@@ -375,7 +372,7 @@ const MindMap = () => {
   const mindmapref = useRef();
   useEffect(() => {
     const onKeyDown = e => {
-      console.log('onKeyDown', e);
+      // console.log('onKeyDown', e);
       switch (e.key) {
         case 'Tab':
           e.stopPropagation();
@@ -399,7 +396,7 @@ const MindMap = () => {
 
   const blur = () => {
     focusDispatch({ type: 'blur' });
-  };  
+  };
 
   return (
     <>
@@ -408,9 +405,7 @@ const MindMap = () => {
         ref={mindmapref}
         style={{
           outline: '1px solid grey',
-          width: '100%',
-          // display: 'flex',
-          // justifyContent: 'safe center',
+          width: '100%',          
           position: 'relative',
           margin: 12,
           padding: 12,
@@ -421,7 +416,9 @@ const MindMap = () => {
         <DataContext.Provider value={treectx}>
           <FocusContext.Provider value={focusctx}>
             <SVGContext.Provider value={svgRef}>
+
               <RecursiveNode node={tree}></RecursiveNode>
+
               {/* 连线 */}
               <svg
                 width="100%"
