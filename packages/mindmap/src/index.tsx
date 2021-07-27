@@ -1,6 +1,7 @@
-import {
+import React, {
   createContext,
   memo,
+  MutableRefObject,
   useContext,
   useEffect,
   useMemo,
@@ -10,6 +11,7 @@ import {
 } from 'react';
 export const DataContext = createContext({});
 export const FocusContext = createContext({});
+export const SVGContext = createContext(null);
 
 export function uuid() {
   return 'xxxxxx'.replace(/[xy]/g, function (c) {
@@ -22,22 +24,23 @@ export function uuid() {
 const findNodeById = (tree, id) => {
   let rs = null;
 
-  const traverse = (node, parent) => {
+  const traverse = (node, parent, idx) => {
     if (!node || id === node.id) {
       rs = {
         parent,
         node,
+        idx,
       };
       return;
     }
 
     if (node.children) {
       for (let i = 0; i < node.children.length; ++i) {
-        traverse(node.children[i], node);
+        traverse(node.children[i], node, i);
       }
     }
   };
-  traverse(tree, null);
+  traverse(tree, null, undefined);
   if (!rs) {
     console.error(rs, id, tree);
     throw new Error('node not found');
@@ -76,6 +79,27 @@ const useEditNode = ({ treectx, focusctx }) => {
     focusDispatch({ type: 'focus', payload: newNode });
   };
 
+  const addSibling = id => {
+    if (!id) {
+      console.log('addSibling should have an id');
+      return;
+    }
+    const nextData = { ...tree };
+    const { parent, node: target, idx } = findNodeById(nextData, id);
+    if (!idx) {
+      console.log('addSibling can`t perform on root');
+      return;
+    }
+    const newNode = {
+      id: uuid(),
+      text: '子结点' + uuid(),
+      showChildren: true,
+      children: [],
+    };
+    parent.children.splice(idx + 1, 0, newNode);
+    treeDispatch({ type: 'set', payload: nextData });
+    focusDispatch({ type: 'focus', payload: newNode });
+  };
   const deleteNode = id => {
     if (!id) {
       console.log('deleteNode should have an id');
@@ -108,15 +132,17 @@ const useEditNode = ({ treectx, focusctx }) => {
 
   return {
     addChild,
+    addSibling,
     deleteNode,
     editNode,
   };
 };
 
-const RecursiveNode = ({ node }) => {
+const RecursiveNode = React.forwardRef(({ node, tabIndex, children }, ref) => {
   const focusctx = useContext(FocusContext);
   const { focus, focusDispatch } = focusctx;
   const treectx = useContext(DataContext);
+  const svgctx = useContext(SVGContext);
 
   const [editable, setEditable] = useState(false);
   const { editNode } = useEditNode({
@@ -137,6 +163,40 @@ const RecursiveNode = ({ node }) => {
     }
   }, [focus]);
 
+  const rootRef = useRef();
+  const childrenRef = useRef([]);
+  useEffect(() => {
+    console.log(
+      'left top:',
+      rootRef.current.offsetLeft,
+      rootRef.current.offsetTop,
+      rootRef.current.getBoundingClientRect(),
+      node?.text
+    );
+    const x =
+      rootRef.current.offsetLeft +
+      rootRef.current.getBoundingClientRect().width;
+    const y =
+      (rootRef.current.getBoundingClientRect().top +
+        rootRef.current.getBoundingClientRect().bottom) /
+        2 -
+      12; // 减去marginTop: 12
+
+    console.log('root mid x', x);
+    console.log('root mid y', y); // 减去marginTop: 12
+
+    if (node.children && node.children.length) {
+      console.log('childrenRef.current[0]', childrenRef.current);
+      childrenRef.current.map(el => {
+        const childy =
+          (el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) /
+            2 -
+          12; // 减去marginTop: 12
+        svgctx.current.push(`M${x} ${y} H ${x + 10} V ${childy} H ${x + 20}`);
+      });
+    }
+  }, []);
+
   return (
     <div
       style={{
@@ -148,6 +208,7 @@ const RecursiveNode = ({ node }) => {
     >
       {/* 根节点 */}
       <div
+        tabIndex={tabIndex}
         style={{
           border: '1px solid grey',
           flexShrink: 0,
@@ -167,33 +228,34 @@ const RecursiveNode = ({ node }) => {
         contentEditable={editable}
         suppressContentEditableWarning={true}
         onInput={e => {
-          console.log('onInput', e.target.innerText);
           setValue(e.target.innerText);
         }}
+        onKeyDown={e => {
+          console.log('node onkeyDown,editable', editable);
+          editable && e.stopPropagation();
+        }}
+        ref={ref}
       >
-        {node?.text}
-        {/* {!editable && node?.text} */}
-        {/* {editable && (
-          <input
-            type="text"
-            value={value}
-            onChange={e => {
-              setValue(e.target.value);
-              editNode(node.id, { ...node, text: e.target.value });
-            }}
-          />
-        )} */}
+        <span ref={rootRef}>{node?.text}</span>
       </div>
+      {children}
       {/* 子节点 */}
-      <div style={{ marginLeft: 6 }}>
+      <div style={{ marginLeft: 18 }}>
         {node.children &&
-          node.children.map(el => (
-            <RecursiveNode node={el} key={el.id}></RecursiveNode>
+          node.children.map((el, idx) => (
+            <RecursiveNode
+              node={el}
+              key={el.id}
+              tabIndex={idx}
+              ref={r => {
+                childrenRef.current[idx] = r;
+              }}
+            ></RecursiveNode>
           ))}
       </div>
     </div>
   );
-};
+});
 
 /* 用于debug */
 const SingleLayerNode = ({ node }) => {
@@ -283,7 +345,7 @@ const MindMap = () => {
       }
     }
   }, null);
-
+  const svgRef = useRef([]);
   const treectx = useMemo(
     () => ({
       tree,
@@ -299,7 +361,7 @@ const MindMap = () => {
     [focus]
   );
 
-  const { addChild, deleteNode } = useEditNode({
+  const { addChild, deleteNode, addSibling } = useEditNode({
     treectx,
     focusctx,
   });
@@ -319,6 +381,9 @@ const MindMap = () => {
         case 'Delete':
           deleteNode(focusRef.current?.id);
           break;
+        case 'Enter':
+          addSibling(focusRef.current?.id);
+          break;
         default:
       }
     };
@@ -331,6 +396,11 @@ const MindMap = () => {
   const blur = () => {
     focusDispatch({ type: 'blur' });
   };
+  const svgPath = useMemo(() => {
+    console.log('svgRef.current', svgRef.current);
+    return svgRef.current;
+  }, [treectx]);
+
   return (
     <>
       <div
@@ -341,7 +411,7 @@ const MindMap = () => {
           width: '100%',
           // display: 'flex',
           // justifyContent: 'safe center',
-          // position: 'relative',
+          position: 'relative',
           margin: 12,
           padding: 12,
           overflow: 'auto',
@@ -350,7 +420,37 @@ const MindMap = () => {
       >
         <DataContext.Provider value={treectx}>
           <FocusContext.Provider value={focusctx}>
-            <RecursiveNode node={tree}></RecursiveNode>
+            <SVGContext.Provider value={svgRef}>
+              <RecursiveNode node={tree}></RecursiveNode>
+              {/* 连线 */}
+              <svg
+                width="100%"
+                height="100%"
+                style={{ position: 'absolute', top: 0, left: 0, zIndex: -1 }}
+              >
+                {/* <defs>
+                  <filter id="edge-removal">
+                    <feComponentTransfer>
+                      <feFuncA
+                        type="table"
+                        tableValues="0 0 0 0 0 0 0 0 0 0 1"
+                      />
+                    </feComponentTransfer>
+                  </filter>
+                </defs>
+                <g filter="url(#edge-removal)" fill="transparent" stroke="navy"> */}
+                <g
+                  fill="transparent"
+                  stroke="navy"
+                  style={{ shapeRendering: 'crispEdges' }}
+                  strokeWidth={2}
+                >
+                  {svgPath.map(d => {
+                    return <path d={d} key={d}></path>;
+                  })}
+                </g>
+              </svg>
+            </SVGContext.Provider>
           </FocusContext.Provider>
         </DataContext.Provider>
       </div>
