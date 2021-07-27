@@ -74,7 +74,7 @@ const useEditNode = ({ treectx, focusctx }) => {
       children: [],
     };
     target.children = [...target?.children, newNode];
-    console.log('dispatched treeDispatch');
+    console.log('dispatched treeDispatch', target);
     treeDispatch({ type: 'set', payload: nextData });
     focusDispatch({ type: 'focus', payload: newNode });
   };
@@ -138,7 +138,7 @@ const useEditNode = ({ treectx, focusctx }) => {
   };
 };
 
-const RecursiveNode = React.forwardRef(({ node, tabIndex, children }, ref) => {
+const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
   const focusctx = useContext(FocusContext);
   const { focus, focusDispatch } = focusctx;
   const treectx = useContext(DataContext);
@@ -165,36 +165,37 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex, children }, ref) => {
 
   const rootRef = useRef();
   const childrenRef = useRef([]);
+
   useEffect(() => {
-    console.log(
-      'left top:',
-      rootRef.current.offsetLeft,
-      rootRef.current.offsetTop,
-      rootRef.current.getBoundingClientRect(),
-      node?.text
-    );
-    const x =
-      rootRef.current.offsetLeft +
-      rootRef.current.getBoundingClientRect().width;
-    const y =
-      (rootRef.current.getBoundingClientRect().top +
-        rootRef.current.getBoundingClientRect().bottom) /
-        2 -
-      12; // 减去marginTop: 12
+    // console.log(
+    //   'left top:',
+    //   rootRef.current.offsetLeft,
+    //   rootRef.current.offsetTop,
+    //   rootRef.current.getBoundingClientRect(),
+    //   node?.text
+    // );
+    // const x =
+    //   rootRef.current.offsetLeft +
+    //   rootRef.current.getBoundingClientRect().width;
+    // const y =
+    //   (rootRef.current.getBoundingClientRect().top +
+    //     rootRef.current.getBoundingClientRect().bottom) /
+    //     2 -
+    //   12; // 减去marginTop: 12
 
-    console.log('root mid x', x);
-    console.log('root mid y', y); // 减去marginTop: 12
+    // console.log('root mid x', x);
+    // console.log('root mid y', y); // 减去marginTop: 12
 
-    if (node.children && node.children.length) {
-      console.log('childrenRef.current[0]', childrenRef.current);
-      childrenRef.current.map(el => {
-        const childy =
-          (el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) /
-            2 -
-          12; // 减去marginTop: 12
-        svgctx.current.push(`M${x} ${y} H ${x + 10} V ${childy} H ${x + 20}`);
-      });
-    }
+    // if (node.children && node.children.length) {
+    //   console.log('childrenRef.current[0]', childrenRef.current);
+    //   childrenRef.current.map(el => {
+    //     const childy =
+    //       (el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) /
+    //         2 -
+    //       12; // 减去marginTop: 12
+    //     svgctx.current.push(`M${x} ${y} H ${x + 10} V ${childy} H ${x + 20}`);
+    //   });
+    // }
   }, []);
 
   return (
@@ -238,7 +239,6 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex, children }, ref) => {
       >
         <span ref={rootRef}>{node?.text}</span>
       </div>
-      {children}
       {/* 子节点 */}
       <div style={{ marginLeft: 18 }}>
         {node.children &&
@@ -272,6 +272,7 @@ type focusAction =
   | { type: 'blur'; payload: any };
 
 const MindMap = () => {
+  const svgRef = useRef([]);
   const [tree, treeDispatch] = useReducer(
     (tree, action) => {
       switch (action.type) {
@@ -284,6 +285,7 @@ const MindMap = () => {
     {
       id: 'root',
       text: '主题',
+      isRoot: true,
       showChildren: true,
       children: [
         {
@@ -334,6 +336,9 @@ const MindMap = () => {
     }
   );
 
+  useEffect(()=>{
+    console.log('tree',tree)
+  },[tree])
   const [focus, focusDispatch] = useReducer((prev, action: focusAction) => {
     switch (action.type) {
       case 'focus':
@@ -344,8 +349,7 @@ const MindMap = () => {
         return prev;
       }
     }
-  }, null);
-  const svgRef = useRef([]);
+  }, null);  
   const treectx = useMemo(
     () => ({
       tree,
@@ -395,11 +399,7 @@ const MindMap = () => {
 
   const blur = () => {
     focusDispatch({ type: 'blur' });
-  };
-  const svgPath = useMemo(() => {
-    console.log('svgRef.current', svgRef.current);
-    return svgRef.current;
-  }, [treectx]);
+  };  
 
   return (
     <>
@@ -445,7 +445,7 @@ const MindMap = () => {
                   style={{ shapeRendering: 'crispEdges' }}
                   strokeWidth={2}
                 >
-                  {svgPath.map(d => {
+                  {svgRef.current.map(d => {
                     return <path d={d} key={d}></path>;
                   })}
                 </g>
