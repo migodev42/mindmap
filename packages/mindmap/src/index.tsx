@@ -168,7 +168,8 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
   const childrenRef = useRef([]);
 
   const [svgPaths, setSvgPaths] = useState([]);
-  useEffect(() => {    
+  const [svgSize, setSvgSize] = useState([]);
+  useEffect(() => {
     const path = [];
     const computPath = root => {
       const [rootNode, childrenNode] = root.children;
@@ -179,9 +180,9 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
           rootNode.getBoundingClientRect().bottom) /
           2 -
         12;
-      console.log('root ', rootNode, childrenNode.children, x, y);
+      // console.log('root ', rootNode, childrenNode.children, x, y);
       childrenNode.children &&
-      childrenNode.children.length &&
+        childrenNode.children.length &&
         Array.from(childrenNode.children).forEach(el => {
           const childy =
             (el.getBoundingClientRect().top +
@@ -195,7 +196,17 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
     };
     computPath(rootRef.current);
     if (node.isRoot) {
+      console.log(
+        'root ',
+        rootRef.current,
+        rootRef.current.getBoundingClientRect().width,
+        rootRef.current.getBoundingClientRect().height
+      );
       setSvgPaths(path);
+      setSvgSize([
+        rootRef.current.getBoundingClientRect().width,
+        rootRef.current.getBoundingClientRect().height + 12,
+      ]);
     }
   }, [node]);
 
@@ -258,8 +269,8 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
       {/* 连线 */}
       {node.isRoot && (
         <svg
-          width="100%"
-          height="100%"
+          width={svgSize[0] || '100%'}
+          height={svgSize[1] || '100%'}
           style={{ position: 'absolute', top: 0, left: 0, zIndex: -1 }}
         >
           {/* <defs>
@@ -289,7 +300,7 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
   );
 });
 
-const SVGLine = ()=>{}
+const SVGLine = () => {};
 
 /* 用于debug */
 const SingleLayerNode = ({ node }) => {
