@@ -61,26 +61,24 @@ const useEditNode = ({ treectx, focusctx }) => {
   const { focus, focusDispatch } = focusctx;
   const { tree, treeDispatch } = treectx;
 
-  const addChild = usePersistFn(
-    id => {
-      if (!id) {
-        console.log('addChild should have an id');
-        return;
-      }
-      const nextData = { ...tree };
-      const { node: target } = findNodeById(nextData, id);
+  const addChild = usePersistFn(id => {
+    if (!id) {
+      console.log('addChild should have an id');
+      return;
+    }
+    const nextData = { ...tree };
+    const { node: target } = findNodeById(nextData, id);
 
-      const newNode = {
-        id: uuid(),
-        text: '子结点' + uuid(),
-        showChildren: true,
-        children: [],
-      };
-      target.children.push(newNode);
-      treeDispatch({ type: 'set', payload: nextData, source: 'child' });
-      focusDispatch({ type: 'focus', payload: newNode });
-    },
-  );
+    const newNode = {
+      id: uuid(),
+      text: '子结点' + uuid(),
+      showChildren: true,
+      children: [],
+    };
+    target.children.push(newNode);
+    treeDispatch({ type: 'set', payload: nextData, source: 'child' });
+    focusDispatch({ type: 'focus', payload: newNode });
+  });
 
   const addSibling = usePersistFn(id => {
     if (!id) {
@@ -169,35 +167,37 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
   const rootRef = useRef();
   const childrenRef = useRef([]);
 
-  useEffect(() => {
-    console.log(
-      'left top:',
-      rootRef.current.offsetLeft,
-      rootRef.current.offsetTop,
-      rootRef.current.getBoundingClientRect(),
-      node?.text
-    );
-    const x =
-      rootRef.current.offsetLeft +
-      rootRef.current.getBoundingClientRect().width;
-    const y =
-      (rootRef.current.getBoundingClientRect().top +
-        rootRef.current.getBoundingClientRect().bottom) /
-        2 -
-      12; // 减去marginTop: 12
-    // console.log('root mid x', x);
-    // console.log('root mid y', y); // 减去marginTop: 12
-    if (node.children && node.children.length) {
-      console.log('childrenRef.current[0]', childrenRef.current);
-      childrenRef.current.map(el => {
-        const childy =
-          (el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) /
-            2 -
-          12; // 减去marginTop: 12
-        svgctx.current.push(`M${x} ${y} H ${x + 10} V ${childy} H ${x + 20}`);
-      });
+  const [svgPaths, setSvgPaths] = useState([]);
+  useEffect(() => {    
+    const path = [];
+    const computPath = root => {
+      const [rootNode, childrenNode] = root.children;
+
+      const x = rootNode.offsetLeft + rootNode.getBoundingClientRect().width;
+      const y =
+        (rootNode.getBoundingClientRect().top +
+          rootNode.getBoundingClientRect().bottom) /
+          2 -
+        12;
+      console.log('root ', rootNode, childrenNode.children, x, y);
+      childrenNode.children &&
+      childrenNode.children.length &&
+        Array.from(childrenNode.children).forEach(el => {
+          const childy =
+            (el.getBoundingClientRect().top +
+              el.getBoundingClientRect().bottom) /
+              2 -
+            6; // 减去marginTop: 12
+          path.push(`M${x} ${y} H ${x + 10} V ${childy} H ${x + 20}`);
+
+          computPath(el);
+        });
+    };
+    computPath(rootRef.current);
+    if (node.isRoot) {
+      setSvgPaths(path);
     }
-  }, [node.children, node?.text, svgctx]);
+  }, [node]);
 
   return (
     <div
@@ -207,6 +207,7 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
         flexShrink: 0,
         minWidth: 100,
       }}
+      ref={rootRef}
     >
       {/* 根节点 */}
       <div
@@ -235,10 +236,10 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
         onKeyDown={e => {
           editable && e.stopPropagation();
         }}
-        ref={ref}
       >
-        <span ref={rootRef}>{node?.text}</span>
+        <span>{node?.text}</span>
       </div>
+
       {/* 子节点 */}
       <div style={{ marginLeft: 18 }}>
         {node.children &&
@@ -253,9 +254,42 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
             ></RecursiveNode>
           ))}
       </div>
+
+      {/* 连线 */}
+      {node.isRoot && (
+        <svg
+          width="100%"
+          height="100%"
+          style={{ position: 'absolute', top: 0, left: 0, zIndex: -1 }}
+        >
+          {/* <defs>
+                  <filter id="edge-removal">
+                    <feComponentTransfer>
+                      <feFuncA
+                        type="table"
+                        tableValues="0 0 0 0 0 0 0 0 0 0 1"
+                      />
+                    </feComponentTransfer>
+                  </filter>
+                </defs>
+                <g filter="url(#edge-removal)" fill="transparent" stroke="navy"> */}
+          <g
+            fill="transparent"
+            stroke="navy"
+            style={{ shapeRendering: 'crispEdges' }}
+            strokeWidth={1}
+          >
+            {svgPaths.map(d => {
+              return <path d={d} key={d}></path>;
+            })}
+          </g>
+        </svg>
+      )}
     </div>
   );
 });
+
+const SVGLine = ()=>{}
 
 /* 用于debug */
 const SingleLayerNode = ({ node }) => {
@@ -267,9 +301,7 @@ const SingleLayerNode = ({ node }) => {
   );
 };
 
-type focusAction =
-  | { type: 'focus'; payload: object }
-  | { type: 'blur'; payload: any };
+type focusAction = { type: 'focus'; payload: object } | { type: 'blur' };
 
 const MindMap = () => {
   const svgRef = useRef([]);
@@ -347,6 +379,7 @@ const MindMap = () => {
       }
     }
   }, null);
+
   const treectx = useMemo(
     () => ({
       tree,
@@ -417,35 +450,6 @@ const MindMap = () => {
           <FocusContext.Provider value={focusctx}>
             <SVGContext.Provider value={svgRef}>
               <RecursiveNode node={tree}></RecursiveNode>
-
-              {/* 连线 */}
-              <svg
-                width="100%"
-                height="100%"
-                style={{ position: 'absolute', top: 0, left: 0, zIndex: -1 }}
-              >
-                {/* <defs>
-                  <filter id="edge-removal">
-                    <feComponentTransfer>
-                      <feFuncA
-                        type="table"
-                        tableValues="0 0 0 0 0 0 0 0 0 0 1"
-                      />
-                    </feComponentTransfer>
-                  </filter>
-                </defs>
-                <g filter="url(#edge-removal)" fill="transparent" stroke="navy"> */}
-                <g
-                  fill="transparent"
-                  stroke="navy"
-                  style={{ shapeRendering: 'crispEdges' }}
-                  strokeWidth={1}
-                >
-                  {svgRef.current.map(d => {
-                    return <path d={d} key={d}></path>;
-                  })}
-                </g>
-              </svg>
             </SVGContext.Provider>
           </FocusContext.Provider>
         </DataContext.Provider>
