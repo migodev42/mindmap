@@ -137,6 +137,7 @@ const useEditNode = ({ treectx, focusctx }) => {
   };
 };
 
+const mindmapContainerPadding = 12;
 // eslint-disable-next-line react/display-name
 const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
   const focusctx = useContext(FocusContext);
@@ -169,30 +170,36 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
 
   const [svgPaths, setSvgPaths] = useState([]);
   const [svgSize, setSvgSize] = useState([]);
+
+  /* 绘制svg连线 */
   useEffect(() => {
     const path = [];
     const computPath = root => {
       const [rootNode, childrenNode] = root.children;
 
       const x = rootNode.offsetLeft + rootNode.getBoundingClientRect().width;
-      const y =
-        (rootNode.getBoundingClientRect().top +
-          rootNode.getBoundingClientRect().bottom) /
-          2 -
-        24;
-      // console.log('root ', rootNode, childrenNode.children, x, y);
-      childrenNode.children &&
-        childrenNode.children.length &&
-        Array.from(childrenNode.children).forEach(el => {
-          const childy =
-            (el.getBoundingClientRect().top +
-              el.getBoundingClientRect().bottom) /
-              2 -
-            18; // 减去marginTop: 12
-          path.push(`M${x} ${y} H ${x + 10} V ${childy} H ${x + 20}`);
 
-          computPath(el);
-        });
+      const y =
+        root.style.position === 'relative'
+          ? root.offsetTop - mindmapContainerPadding + root.offsetHeight / 2
+          : root.offsetTop + root.offsetHeight / 2;
+
+      // console.log('root ', rootNode);
+      if (!childrenNode.children || !childrenNode.children.length) return;
+
+      // 单个子节点，解决单个子节点连线计算错位问题
+      if (childrenNode.children.length === 1) {
+        path.push(`M${x} ${y} H ${x + 10} V ${y} H ${x + 20}`);
+        computPath(childrenNode.children[0]);
+        return;
+      }
+
+      // 多个子节点
+      Array.from(childrenNode.children).forEach(el => {
+        const childy = el.offsetTop + el.offsetHeight / 2;
+        path.push(`M${x} ${y} H ${x + 10} V ${childy} H ${x + 20}`);
+        computPath(el);
+      });
     };
     computPath(rootRef.current);
     if (node.isRoot) {
@@ -203,10 +210,7 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
         rootRef.current.getBoundingClientRect().height
       );
       setSvgPaths(path);
-      setSvgSize([
-        rootRef.current.scrollWidth,
-        rootRef.current.scrollHeight,
-      ]);
+      setSvgSize([rootRef.current.scrollWidth, rootRef.current.scrollHeight]);
     }
   }, [node]);
 
@@ -227,9 +231,8 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
         style={{
           border: '1px solid grey',
           flexShrink: 0,
+          lineHeight: 1.2,
           marginTop: 12,
-          marginRight: 6,
-          lineHeight: 1.2,          
           outline:
             focus && focus.id === node.id
               ? editable
@@ -415,6 +418,8 @@ const MindMap = () => {
   focusRef.current = focus;
 
   const mindmapref = useRef();
+
+  /* 键盘事件处理 */
   useEffect(() => {
     const onKeyDown = e => {
       // console.log('onKeyDown', e);
@@ -450,11 +455,11 @@ const MindMap = () => {
         ref={mindmapref}
         style={{
           outline: '1px solid grey',
-          width: '100%',
-          height: '90vh',
+          width: '50%',
+          height: '50vh',
           position: 'relative',
           margin: 12,
-          padding: 12,
+          padding: mindmapContainerPadding,
           overflow: 'auto',
         }}
         onClick={blur}
