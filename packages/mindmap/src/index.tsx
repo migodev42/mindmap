@@ -179,7 +179,7 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
         (rootNode.getBoundingClientRect().top +
           rootNode.getBoundingClientRect().bottom) /
           2 -
-        12;
+        24;
       // console.log('root ', rootNode, childrenNode.children, x, y);
       childrenNode.children &&
         childrenNode.children.length &&
@@ -188,7 +188,7 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
             (el.getBoundingClientRect().top +
               el.getBoundingClientRect().bottom) /
               2 -
-            6; // 减去marginTop: 12
+            18; // 减去marginTop: 12
           path.push(`M${x} ${y} H ${x + 10} V ${childy} H ${x + 20}`);
 
           computPath(el);
@@ -199,13 +199,13 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
       console.log(
         'root ',
         rootRef.current,
-        rootRef.current.getBoundingClientRect().width,
+        rootRef.current.scrollWidth,
         rootRef.current.getBoundingClientRect().height
       );
       setSvgPaths(path);
       setSvgSize([
-        rootRef.current.getBoundingClientRect().width,
-        rootRef.current.getBoundingClientRect().height + 12,
+        rootRef.current.scrollWidth,
+        rootRef.current.scrollHeight,
       ]);
     }
   }, [node]);
@@ -217,6 +217,7 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
         alignItems: 'center',
         flexShrink: 0,
         minWidth: 100,
+        position: node.isRoot ? 'relative' : 'unset',
       }}
       ref={rootRef}
     >
@@ -228,7 +229,7 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
           flexShrink: 0,
           marginTop: 12,
           marginRight: 6,
-          lineHeight: 1.2,
+          lineHeight: 1.2,          
           outline:
             focus && focus.id === node.id
               ? editable
@@ -450,6 +451,7 @@ const MindMap = () => {
         style={{
           outline: '1px solid grey',
           width: '100%',
+          height: '90vh',
           position: 'relative',
           margin: 12,
           padding: 12,
