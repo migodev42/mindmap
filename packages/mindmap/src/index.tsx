@@ -161,7 +161,7 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
   useEffect(() => {
     if (!focus) {
       setEditable(false);
-      // editNode(node.id, { ...node, text: value });
+      editNode(node.id, { ...node, text: value });
     }
   }, [focus]);
 
@@ -204,7 +204,7 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
     computPath(rootRef.current);
     if (node.isRoot) {
       console.log(
-        'root ',
+        '绘制svg连线',
         rootRef.current,
         rootRef.current.scrollWidth,
         rootRef.current.getBoundingClientRect().height
