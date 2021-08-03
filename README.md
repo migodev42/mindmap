@@ -6,7 +6,7 @@
 ![](2021-07-29-14-06-34.png)
 
 
-### 参考
+<!-- ### 参考 -->
 
-lerna配置：
-- [](https://medium.com/rewrite-tech/how-to-create-a-monorepo-with-lerna-3ed6dfec5021)
+<!-- lerna配置：
+- [](https://medium.com/rewrite-tech/how-to-create-a-monorepo-with-lerna-3ed6dfec5021) -->
