@@ -122,10 +122,11 @@ const useEditNode = ({ treectx, focusctx }) => {
       return;
     }
     const nextTree = { ...tree };
-    const { parent, node: target } = findNodeById(nextTree, id);
-    Object.keys(node).map(key => {
-      target[key] = node[key];
-    });
+    let { node: target } = findNodeById(nextTree, id);
+    target = Object.assign(target, node);
+    // Object.keys(node).map(key => {
+    //   target[key] = node[key];
+    // });
     treeDispatch({ type: 'set', payload: nextTree, source: 'edit' });
   });
 
