@@ -211,6 +211,8 @@ const RecursiveNode = React.forwardRef(({ node, tabIndex }, ref) => {
         rootRef.current.getBoundingClientRect().height
       );
       setSvgPaths(path);
+
+      // 修复结点溢出容器时，连线位置错位
       setSvgSize([rootRef.current.scrollWidth, rootRef.current.scrollHeight]);
     }
   }, [node]);
